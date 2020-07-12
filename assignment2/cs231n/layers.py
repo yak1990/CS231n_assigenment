@@ -214,7 +214,22 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+
+        now_mean=np.mean(x,axis=0)
+        now_var=np.var(x,axis=0)
+        running_mean=momentum*running_mean+(1.0-momentum)*now_mean
+        running_var=momentum*running_var+(1.0-momentum)*now_var
+
+        now_x=x-now_mean
+        now_x=now_x/np.sqrt(now_var+eps)
+
+        
+        cache=[x,now_mean,now_var,now_x,gamma,eps]
+
+        now_x=now_x*gamma
+        now_x=now_x+beta
+
+        out=now_x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -229,7 +244,13 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        now_x=x-running_mean
+        now_x=now_x/np.sqrt(running_var+eps)
+
+        now_x=now_x*gamma
+        now_x=now_x+beta
+
+        out=now_x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -271,7 +292,22 @@ def batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dbeta=np.sum(dout,axis=0)
+    x,now_mean,now_val,norm_x,gamma,eps=cache
+    N,D=x.shape
+    dgamma=dout*norm_x
+    dgamma=np.sum(dgamma,axis=0)
+    dnorm_x=dout*gamma
+    dx=dnorm_x/np.sqrt(now_val+eps)
+    dmean_x=-np.sum(dnorm_x/np.sqrt(now_val+eps),axis=0)
+    dvar_x=np.sum(dnorm_x*(x-now_mean)*(-0.5)/(np.sqrt(now_val+eps)*(now_val+eps)),axis=0)
+    tmp=(x-now_mean)*2.0/(N)
+    dx+=tmp*dvar_x
+    dmean_x-=np.sum(tmp*dvar_x)
+    dx+=dmean_x/N
+
+
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -306,8 +342,25 @@ def batchnorm_backward_alt(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dbeta=np.sum(dout,axis=0)
+    x,now_mean,now_val,norm_x,gamma,eps=cache
+    N,D=x.shape
+    dgamma=dout*norm_x
+    dgamma=np.sum(dgamma,axis=0)
 
+    dnorm_x=dout*gamma
+    tmp1=1.0/np.sqrt(now_val+eps)
+    tmp2=x-now_mean
+    tmp3=np.identity(N)-1.0/N
+    tmp4=tmp1*dnorm_x-(np.sum(tmp2*dnorm_x,axis=0)/(N*np.sqrt(tmp1)*tmp1))*tmp2
+    dx=np.matmul(tmp3,tmp4)
+
+    tmp6=((x-now_mean)*2.0/(N))*(np.sum(dnorm_x*(x-now_mean)*(-0.5)/(np.sqrt(now_val+eps)*(now_val+eps)),axis=0))
+    print(np.matmul(tmp3,tmp1*dnorm_x-tmp6))
+
+
+
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -821,3 +874,23 @@ def softmax_loss(x, y):
     dx[np.arange(N), y] -= 1
     dx /= N
     return loss, dx
+
+
+def my_test(a):
+  def loss(a):
+    a_mean=np.mean(a,axis=0)
+    a_var=np.var(a,axis=0)
+    out=(a-a_mean)/a_var
+
+np.random.seed(231)
+N, D = 4, 5
+x = 5 * np.random.randn(N, D) + 12
+gamma = np.random.randn(D)
+beta = np.random.randn(D)
+dout = np.random.randn(N, D)
+bn_param = {'mode': 'train'}
+_, cache = batchnorm_forward(x, gamma, beta, bn_param)
+dx, dgamma, dbeta = batchnorm_backward(dout, cache)
+print(dx)
+dx, dgamma, dbeta = batchnorm_backward_alt(dout, cache)
+print(dx)
