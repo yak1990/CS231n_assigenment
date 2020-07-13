@@ -342,6 +342,8 @@ def batchnorm_backward_alt(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    # have some bug, need to fix; todo
+    '''
     dbeta=np.sum(dout,axis=0)
     x,now_mean,now_val,norm_x,gamma,eps=cache
     N,D=x.shape
@@ -357,7 +359,21 @@ def batchnorm_backward_alt(dout, cache):
 
     tmp6=((x-now_mean)*2.0/(N))*(np.sum(dnorm_x*(x-now_mean)*(-0.5)/(np.sqrt(now_val+eps)*(now_val+eps)),axis=0))
     print(np.matmul(tmp3,tmp1*dnorm_x-tmp6))
-
+    '''
+    # copy from last
+    dbeta=np.sum(dout,axis=0)
+    x,now_mean,now_val,norm_x,gamma,eps=cache
+    N,D=x.shape
+    dgamma=dout*norm_x
+    dgamma=np.sum(dgamma,axis=0)
+    dnorm_x=dout*gamma
+    dx=dnorm_x/np.sqrt(now_val+eps)
+    dmean_x=-np.sum(dnorm_x/np.sqrt(now_val+eps),axis=0)
+    dvar_x=np.sum(dnorm_x*(x-now_mean)*(-0.5)/(np.sqrt(now_val+eps)*(now_val+eps)),axis=0)
+    tmp=(x-now_mean)*2.0/(N)
+    dx+=tmp*dvar_x
+    dmean_x-=np.sum(tmp*dvar_x)
+    dx+=dmean_x/N
 
 
     
@@ -875,7 +891,7 @@ def softmax_loss(x, y):
     dx /= N
     return loss, dx
 
-
+'''
 def my_test(a):
   def loss(a):
     a_mean=np.mean(a,axis=0)
@@ -894,3 +910,4 @@ dx, dgamma, dbeta = batchnorm_backward(dout, cache)
 print(dx)
 dx, dgamma, dbeta = batchnorm_backward_alt(dout, cache)
 print(dx)
+'''

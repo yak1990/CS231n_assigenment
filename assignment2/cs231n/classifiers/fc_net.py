@@ -211,6 +211,11 @@ class FullyConnectedNet(object):
           else:
             self.params[w_name]=weight_scale*np.random.normal(size=(hidden_dims[i-1],hidden_dims[i]))
           self.params[b_name]=np.zeros(hidden_dims[i])
+          if(self.normalization!=None):
+            gamma_name='gamma'+str(i+1)
+            beta_name='beta'+str(i+1)
+            self.params[gamma_name]=np.ones(hidden_dims[i])
+            self.params[beta_name]=np.zeros(hidden_dims[i])
         
         w_name='W'+str(self.num_layers)
         b_name='b'+str(self.num_layers)
@@ -285,7 +290,14 @@ class FullyConnectedNet(object):
           w_name='W'+str(i+1)
           b_name='b'+str(i+1)
           cache[i]=None
-          now_x,cache[i]=affine_relu_forward(now_x,self.params[w_name],self.params[b_name])
+          if(self.normalization==None):
+            now_x,cache[i]=affine_relu_forward(now_x,self.params[w_name],self.params[b_name])
+          else:
+            now_x,cache[('affine',i)]=affine_forward(now_x,self.params[w_name],self.params[b_name])
+            gamma_name='gamma'+str(i+1)
+            beta_name='beta'+str(i+1)
+            now_x,cache[('norm',i)]=batchnorm_forward(now_x,self.params[gamma_name],self.params[beta_name],self.bn_params[i])
+            now_x,cache[('relu',i)]=relu_forward(now_x)
         w_name='W'+str(self.num_layers)
         b_name='b'+str(self.num_layers)
         now_x,now_cache=affine_forward(now_x,self.params[w_name],self.params[b_name])
@@ -329,8 +341,15 @@ class FullyConnectedNet(object):
         for i in reversed(range(self.num_layers-1)):
           w_name='W'+str(i+1)
           b_name='b'+str(i+1)
-          dloss,grads[w_name],grads[b_name]=affine_relu_backward(dloss,cache[i])
-          grads[w_name]+=self.reg*self.params[w_name]
+          if(self.normalization==None):
+            dloss,grads[w_name],grads[b_name]=affine_relu_backward(dloss,cache[i])
+          else:
+            dloss=relu_backward(dloss,cache[('relu',i)])
+            gamma_name='gamma'+str(i+1)
+            beta_name='beta'+str(i+1)
+            dloss,grads[gamma_name],grads[beta_name]=batchnorm_backward(dloss,cache[('norm',i)])
+            dloss,grads[w_name],grads[b_name]=affine_backward(dloss,cache[('affine',i)])
+            grads[w_name]+=self.reg*self.params[w_name]
 
         for i in range(self.num_layers-1):
           w_name='W'+str(i+1)
