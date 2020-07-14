@@ -421,7 +421,13 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    now_mean=np.mean(x,axis=1)
+    now_var=np.var(x,axis=1)
+    now_std=np.sqrt(now_var+eps)
+    norm_x=((x.T-now_mean)/now_std).T
+    out=norm_x*gamma
+    out=out+beta
+    cache=[x,now_mean,now_var,now_std,norm_x,eps]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -456,7 +462,9 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x,now_mean,now_var,now_std,norm_x,eps=cache
+    dbeta=dout
+    dgamma=np.sum(dout*norm_x)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
