@@ -649,14 +649,36 @@ def conv_forward_naive(x, w, b, conv_param):
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    stride=conv_param['stride']
+    pad=conv_param['pad']
+    N,C,H,W=x.shape
+    F, _, HH, WW=w.shape
 
-    pass
+    pad_x=np.zeros((N,C,H+2*pad,W+2*pad))
+    pad_x[:,:,pad:(H+pad),pad:(W+pad)]=x
+
+    H_out=int(1 + (H + 2 * pad - HH) / stride)
+    W_out=int(1 + (W + 2 * pad - WW) / stride)
+
+    out=np.zeros((N,F,H_out,W_out))
+
+    for n in range(N):
+      for i in range(H_out):
+        i_offset=stride*i
+        for j in range(W_out):
+          j_offset=stride*j
+          for k in range(F):
+            #now_x=pad_x[n,:,i:HH,j:WW].reshape(C,HH,WW)
+            now_x=pad_x[n,:,i_offset:i_offset+HH,j_offset:j_offset+WW]
+            conv=w[k,:,:,:]
+            out[n,k,i,j]=np.sum(now_x*conv)+b[k]
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-    cache = (x, w, b, conv_param)
+    cache = (x, w, b, conv_param,pad_x)
     return out, cache
 
 
@@ -678,9 +700,33 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x, w, b, conv_param,pad_x=cache
+    stride=conv_param['stride']
+    pad=conv_param['pad']
+    N,C,H,W=x.shape
+    F, _, HH, WW=w.shape
+    _,_,H_out,W_out=dout.shape
 
-    pass
+    dx_pad=np.zeros((N,C,H+2*pad,W+2*pad))
+    dw=np.zeros(w.shape)
+    db=np.zeros(b.shape)
 
+    for n in range(N):
+      for i in range(H_out):
+        i_offset=stride*i
+        for j in range(W_out):
+          j_offset=stride*j
+          for k in range(F):
+            #now_x=pad_x[n,:,i:HH,j:WW].reshape(C,HH,WW)
+            now_x=pad_x[n,:,i_offset:i_offset+HH,j_offset:j_offset+WW]
+            conv=w[k,:,:,:]
+
+            db[k]+=dout[n,k,i,j]
+            dnowloss=np.ones((C,HH,WW))*dout[n,k,i,j]
+            dx_pad[n,:,i_offset:i_offset+HH,j_offset:j_offset+WW]+=conv*dnowloss
+            dw[k,:,:,:]+=now_x*dnowloss
+
+    dx=dx_pad[:,:,pad:pad+H,pad:pad+W]
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
