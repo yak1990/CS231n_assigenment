@@ -759,13 +759,36 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W=x.shape
+    pool_h=pool_param['pool_height']
+    pool_w=pool_param['pool_width']
+    stride=pool_param['stride']
+
+    out_h=int((H-pool_h)/stride+1)
+    out_w=int((W-pool_w)/stride+1)
+    out=np.zeros((N,C,out_h,out_w))
+
+    out_id={}
+
+    for n in range(N):
+      for c in range(C):
+        for i in range(out_h):
+          i_offset=i*stride
+          for j in range(out_w):
+            j_offset=j*stride
+            out[n,c,i,j]=np.max(x[n,c,i_offset:i_offset+stride,j_offset:j_offset+stride])
+            now_id=np.argmax(x[n,c,i_offset:i_offset+stride,j_offset:j_offset+stride])
+            id1=now_id%stride
+            id2=int(now_id/stride)
+            
+            out_id[(n,c,i,j)]=(n,c,i_offset+id2,j_offset+id1)
+            
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-    cache = (x, pool_param)
+    cache = (x,out_id, pool_param)
     return out, cache
 
 
@@ -786,7 +809,13 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x,out_id, pool_param=cache
+
+    dx=np.zeros(x.shape)
+    N,C,H,W=x.shape
+    for i,j in out_id.items():
+      #print(i,j)
+      dx[j]=dout[i]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
