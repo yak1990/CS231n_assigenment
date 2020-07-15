@@ -427,7 +427,7 @@ def layernorm_forward(x, gamma, beta, ln_param):
     norm_x=((x.T-now_mean)/now_std).T
     out=norm_x*gamma
     out=out+beta
-    cache=[x,now_mean,now_var,now_std,norm_x,eps]
+    cache=[x,now_mean,now_var,now_std,norm_x,eps,gamma]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -462,9 +462,51 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    x,now_mean,now_var,now_std,norm_x,eps=cache
-    dbeta=dout
-    dgamma=np.sum(dout*norm_x)
+    '''
+    x,now_mean,now_var,now_std,norm_x,eps,gamma=cache
+    _,D=x.shape
+    dbeta=np.sum(dout,axis=0)
+    dgamma=np.sum(dout*norm_x,axis=0)
+
+    dnorm_x=dout*gamma
+    dzero_x=(dnorm_x.T/now_std).T
+    dstd_x_1=np.sum(norm_x*dnorm_x,axis=1)
+    dstd_x=-dstd_x_1/(now_var+eps)
+    dvar_x=0.5*dstd_x/now_std
+    dzero_x+=(2.0*(x.T-now_mean)*dvar_x).T/D
+    dx=dzero_x
+    dmean_x=-np.sum(dzero_x,axis=1)/D
+    dx=(dx.T+dmean_x).T
+    '''
+    x,x_mean,x_var,x_std,x_norm,eps,gamma=cache
+    _,d=x.shape
+
+    #x_mean=np.sum(x,axis=1)/d
+    x_zero=(x.T-x_mean).T
+
+    #x_var=np.sum(x_zero*x_zero,axis=1)/d
+    #x_std=np.sqrt(x_var+eps)
+    #x_norm=(x_zero.T/x_std).T
+
+    dloss=dout
+    dbeta=np.sum(dloss,axis=0)
+    dgamma=np.sum(dloss*x_norm,axis=0)
+
+    dloss2=dloss*gamma
+
+    #x_var=np.sum(x_zero*x_zero,axis=1)/d
+    #x_std=np.sqrt(x_var+eps)
+    dx_zero=(dloss2.T/x_std).T
+    dstd_1=np.sum(dloss2*x_zero,axis=1)
+    dstd=-dstd_1/(x_var+eps)
+    dvar=0.5*dstd/x_std
+    dx_zero+=((2.0*x/d).T*dvar).T
+
+    dx=dx_zero
+    d_mean=-np.sum(dx_zero,axis=1)
+    dx=(dx.T+d_mean/d).T
+    return dx,dgamma,dbeta
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -505,6 +547,7 @@ def dropout_forward(x, dropout_param):
 
     mask = None
     out = None
+    
 
     if mode == "train":
         #######################################################################
@@ -513,7 +556,11 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        N,D=x.shape
+        mask=np.random.rand(N,D)
+        mask=mask>p
+        out=x.copy()
+        out[mask]=0
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -525,7 +572,7 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out=x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -556,7 +603,8 @@ def dropout_backward(dout, cache):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        dx=dout
+        dx[mask]=0
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -898,24 +946,3 @@ def softmax_loss(x, y):
     dx[np.arange(N), y] -= 1
     dx /= N
     return loss, dx
-
-'''
-def my_test(a):
-  def loss(a):
-    a_mean=np.mean(a,axis=0)
-    a_var=np.var(a,axis=0)
-    out=(a-a_mean)/a_var
-
-np.random.seed(231)
-N, D = 4, 5
-x = 5 * np.random.randn(N, D) + 12
-gamma = np.random.randn(D)
-beta = np.random.randn(D)
-dout = np.random.randn(N, D)
-bn_param = {'mode': 'train'}
-_, cache = batchnorm_forward(x, gamma, beta, bn_param)
-dx, dgamma, dbeta = batchnorm_backward(dout, cache)
-print(dx)
-dx, dgamma, dbeta = batchnorm_backward_alt(dout, cache)
-print(dx)
-'''

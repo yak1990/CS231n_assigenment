@@ -290,14 +290,19 @@ class FullyConnectedNet(object):
           w_name='W'+str(i+1)
           b_name='b'+str(i+1)
           cache[i]=None
-          if(self.normalization==None):
-            now_x,cache[i]=affine_relu_forward(now_x,self.params[w_name],self.params[b_name])
-          else:
-            now_x,cache[('affine',i)]=affine_forward(now_x,self.params[w_name],self.params[b_name])
+
+          now_x,cache[('affine',i)]=affine_forward(now_x,self.params[w_name],self.params[b_name])
+          if(self.normalization!=None):
             gamma_name='gamma'+str(i+1)
             beta_name='beta'+str(i+1)
-            now_x,cache[('norm',i)]=batchnorm_forward(now_x,self.params[gamma_name],self.params[beta_name],self.bn_params[i])
-            now_x,cache[('relu',i)]=relu_forward(now_x)
+            if(self.normalization=='batchnorm'):
+              now_x,cache[('norm',i)]=batchnorm_forward(now_x,self.params[gamma_name],self.params[beta_name],self.bn_params[i])
+            elif(self.normalization=='layernorm'):
+              now_x,cache[('norm',i)]=layernorm_forward(now_x,self.params[gamma_name],self.params[beta_name],self.bn_params[i])
+          now_x,cache[('relu',i)]=relu_forward(now_x)
+          if(self.use_dropout):
+            now_x,cache[('dropout',i)]=dropout_forward(now_x,self.dropout_param)
+
         w_name='W'+str(self.num_layers)
         b_name='b'+str(self.num_layers)
         now_x,now_cache=affine_forward(now_x,self.params[w_name],self.params[b_name])
@@ -341,15 +346,21 @@ class FullyConnectedNet(object):
         for i in reversed(range(self.num_layers-1)):
           w_name='W'+str(i+1)
           b_name='b'+str(i+1)
-          if(self.normalization==None):
-            dloss,grads[w_name],grads[b_name]=affine_relu_backward(dloss,cache[i])
-          else:
-            dloss=relu_backward(dloss,cache[('relu',i)])
+          
+          if(self.use_dropout):
+            dloss=dropout_backward(dloss,cache[('dropout',i)])
+
+          dloss=relu_backward(dloss,cache[('relu',i)])
+          if(self.normalization!=None):
             gamma_name='gamma'+str(i+1)
             beta_name='beta'+str(i+1)
-            dloss,grads[gamma_name],grads[beta_name]=batchnorm_backward(dloss,cache[('norm',i)])
-            dloss,grads[w_name],grads[b_name]=affine_backward(dloss,cache[('affine',i)])
-            grads[w_name]+=self.reg*self.params[w_name]
+            if(self.normalization=='batchnorm'):
+              dloss,grads[gamma_name],grads[beta_name]=batchnorm_backward(dloss,cache[('norm',i)])
+            elif(self.normalization=='layernorm'):
+              dloss,grads[gamma_name],grads[beta_name]=layernorm_backward(dloss,cache[('norm',i)])
+          dloss,grads[w_name],grads[b_name]=affine_backward(dloss,cache[('affine',i)])
+          grads[w_name]+=self.reg*self.params[w_name]
+
 
         for i in range(self.num_layers-1):
           w_name='W'+str(i+1)
