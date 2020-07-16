@@ -298,6 +298,8 @@ def batchnorm_backward(dout, cache):
     dgamma=dout*norm_x
     dgamma=np.sum(dgamma,axis=0)
     dnorm_x=dout*gamma
+
+    '''
     dx=dnorm_x/np.sqrt(now_val+eps)
     dmean_x=-np.sum(dnorm_x/np.sqrt(now_val+eps),axis=0)
     dvar_x=np.sum(dnorm_x*(x-now_mean)*(-0.5)/(np.sqrt(now_val+eps)*(now_val+eps)),axis=0)
@@ -305,8 +307,21 @@ def batchnorm_backward(dout, cache):
     dx+=tmp*dvar_x
     dmean_x-=np.sum(tmp*dvar_x)
     dx+=dmean_x/N
+    '''
+    std_x=np.sqrt(now_val+eps)
+
+    dzero_x=np.zeros(x.shape)
+    dzero_x+=dnorm_x/std_x
+    dstd_x_1=np.sum((x-now_mean)*dnorm_x,axis=0)
+    dstd=-dstd_x_1/(now_val+eps)
+    dvar=0.5*dstd/std_x
+    dzero_x+=2.0*(x-now_mean)*dvar/N
+    dx=dzero_x
+    dmean_x=-np.sum(dzero_x,axis=0)
+    dx+=dmean_x/N
 
 
+  
 
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -500,8 +515,8 @@ def layernorm_backward(dout, cache):
     dstd_1=np.sum(dloss2*x_zero,axis=1)
     dstd=-dstd_1/(x_var+eps)
     dvar=0.5*dstd/x_std
-    dx_zero+=((2.0*x/d).T*dvar).T
-
+    dx_zero+=((2.0*x_zero/d).T*dvar).T
+    
     dx=dx_zero
     d_mean=-np.sum(dx_zero,axis=1)
     dx=(dx.T+d_mean/d).T
@@ -856,8 +871,33 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N, C, H, W=x.shape
+    mode=bn_param.get("mode","train")
+    eps=bn_param.get("eps",1e-5)
+    momentum=bn_param.get("momentum",0.9)
+    running_mean=bn_param.get("running_mean",np.zeros((C,H,W)))
+    running_var=bn_param.get("running_var",np.zeros((C,H,W)))
+    
+    local_bn_param={}
+    local_bn_param['mode']=mode
+    local_bn_param['eps']=eps
+    local_bn_param['momentum']=momentum
 
-    pass
+    out=np.zeros(x.shape,dtype=x.dtype)
+    local_cache={}
+
+    for i in range(H):
+      for j in range(W):
+        local_bn_param['running_mean']=running_mean[:,i,j]
+        local_bn_param['running_var']=running_var[:,i,j]
+        out[:,:,i,j],local_cache[(i,j)]=batchnorm_forward(x[:,:,i,j],gamma,beta,local_bn_param)
+        running_mean[:,i,j]=local_bn_param['running_mean']
+        running_var[:,i,j]=local_bn_param['running_var']
+
+    bn_param['running_mean']=running_mean
+    bn_param['running_var']=running_var
+
+    cache=[x,gamma,beta,local_cache]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -890,8 +930,18 @@ def spatial_batchnorm_backward(dout, cache):
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x,gamma,beta,local_cache=cache
+    dx=np.zeros(x.shape,dtype=x.dtype)
+    dgamma=np.zeros(gamma.shape)
+    dbeta=np.zeros(beta.shape)
+    N, C, H, W=x.shape
 
-    pass
+    for i in range(H):
+      for j in range(W):
+        dx[:,:,i,j],dlocal_gamma,dlocal_beta=batchnorm_backward(dout[:,:,i,j],local_cache[(i,j)])
+        
+        dgamma+=dlocal_gamma
+        dbeta+=dlocal_beta
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -1021,3 +1071,4 @@ def softmax_loss(x, y):
     dx[np.arange(N), y] -= 1
     dx /= N
     return loss, dx
+    
