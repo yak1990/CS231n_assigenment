@@ -980,8 +980,28 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # and layer normalization!                                                #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N,C,H,W=x.shape
+    x_group=x.reshape(N*G,-1)
 
-    pass
+    N_group,D_group=x_group.shape
+    local_gamma=np.ones(D_group)
+    local_beta=np.zeros(D_group)
+    local_param={}
+    local_param['eps']=eps
+
+    out_group=np.zeros(x_group.shape)
+   
+    out_group,local_cache=layernorm_forward(x_group,local_gamma,local_beta,local_param)
+    
+    out=out_group.reshape(x.shape)
+    
+    x_norm=out.copy()
+
+    out*=gamma
+    out+=beta
+    
+    cache=[x,x_group,x_norm,gamma,beta,G,eps,local_cache]
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -1010,8 +1030,15 @@ def spatial_groupnorm_backward(dout, cache):
     # This will be extremely similar to the layer norm implementation.        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x,x_group,x_norm,gamma,beta,G,eps,local_cache=cache
+    dbeta=np.sum(dout,axis=(0,2,3)).reshape(beta.shape)
+    dgamma=np.sum(dout*x_norm,axis=(0,2,3)).reshape(beta.shape)
 
-    pass
+    dgroup_x=(dout*gamma).reshape(x_group.shape)
+
+    dgroup_x,_,_=layernorm_backward(dgroup_x,local_cache)
+
+    dx=dgroup_x.reshape(x.shape)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
