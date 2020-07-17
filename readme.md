@@ -6,6 +6,7 @@
 3. learning rate设置中，可以参考课件中的一个曲线图，根据loss的曲线判断lr设置大了还是小了
 4. batchnorm中batchnorm_backward与batchnorm_backward_alt区别
 5. 在batch norm中，发现n=2时，梯度不匹配很高，检查发现，在n=1时，梯度为0，n=2时，梯度很小（在10e-7的量级），如果diff在10e-8的量级时，精度差为10e-13等，怀疑float达不到这样的精度
+6. 关于pytorch中最后一个达不到55（如果初始化的话），[网上给出的解释](https://discuss.pytorch.org/t/weight-initialization-with-a-custom-method-in-nn-sequential/24846/2)
 
 
 # todo
