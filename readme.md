@@ -7,6 +7,7 @@
 4. batchnorm中batchnorm_backward与batchnorm_backward_alt区别
 5. 在batch norm中，发现n=2时，梯度不匹配很高，检查发现，在n=1时，梯度为0，n=2时，梯度很小（在10e-7的量级），如果diff在10e-8的量级时，精度差为10e-13等，怀疑float达不到这样的精度
 6. 关于pytorch中最后一个达不到55（如果初始化的话），[网上给出的解释](https://discuss.pytorch.org/t/weight-initialization-with-a-custom-method-in-nn-sequential/24846/2)
+7. 关于np.add.at问题（assignment3,rnn_layer.py中word_embedding_backward函数），[stackoverflow链接](https://stackoverflow.com/questions/45473896/np-add-at-indexing-with-array),这个不怎么好理解，但是np.add.at(dW,x,dout)中，dW，x会形成一个三维数组，dW[x],这个与word_embedding_forward函数相对应，![alt](image1.png)应该会帮助理解
 
 
 # todo
