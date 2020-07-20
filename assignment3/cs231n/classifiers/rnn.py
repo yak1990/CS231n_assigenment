@@ -150,8 +150,30 @@ class CaptioningRNN(object):
         # in your implementation, if needed.                                       #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        cache={}
+        InitHiddenState=features.dot(W_proj)+b_proj
+        inputData,cache['inputData']=word_embedding_forward(captions_in,W_embed)
+        
+        if(self.cell_type=='rnn'):
+          hiddenState,cache['hiddenState']=rnn_forward(inputData,InitHiddenState,Wx,Wh,b)
+        elif(self.cell_type=='lstm'):
+          hiddenState,cache['hiddenState']=lstm_forward(inputData,InitHiddenState,Wx,Wh,b)
 
-        pass
+        outData,cache['outData']=temporal_affine_forward(hiddenState,W_vocab,b_vocab)
+        loss,dloss=temporal_softmax_loss(outData,captions_out,mask)
+
+        dloss,grads['W_vocab'],grads['b_vocab']=temporal_affine_backward(dloss,cache['outData'])
+        
+        if(self.cell_type=='rnn'):
+          dloss,dInitHiddenState,grads['Wx'],grads['Wh'],grads['b']=rnn_backward(dloss,cache['hiddenState'])
+        elif(self.cell_type=='lstm'):
+          dloss,dInitHiddenState,grads['Wx'],grads['Wh'],grads['b']=lstm_backward(dloss,cache['hiddenState'])
+          
+        grads['W_embed']=word_embedding_backward(dloss,cache['inputData'])
+
+        grads['W_proj']=features.T.dot(dInitHiddenState)
+        grads['b_proj']=np.sum(dInitHiddenState,axis=0)
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -219,7 +241,22 @@ class CaptioningRNN(object):
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        HiddenState=features.dot(W_proj)+b_proj
+        captions[:,0]=self._start*np.ones((N,))
+
+        HiddenCell=np.zeros(HiddenState.shape)
+
+        for i in range(max_length-1):
+          InputData,_=word_embedding_forward(captions[:,i].reshape(N,1),W_embed)
+          if(self.cell_type=='rnn'):
+            HiddenState,_=rnn_step_forward(InputData[:,0,:],HiddenState,Wx,Wh,b)
+          elif(self.cell_type=='lstm'):
+            HiddenState,HiddenCell,_=lstm_step_forward(InputData[:,0,:],HiddenState,HiddenCell,Wx,Wh,b)
+          OutData,_=temporal_affine_forward(HiddenState.reshape(N,1,-1),W_vocab,b_vocab)
+          captions[:,i+1]=np.argmax(OutData.reshape(N,-1),axis=1)
+
+
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

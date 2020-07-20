@@ -68,7 +68,9 @@ def image_from_url(url):
         with open(fname, "wb") as ff:
             ff.write(f.read())
         img = imread(fname)
-        os.remove(fname)
+        # 直接remove会有错误
+        #os.remove(fname)
+        print(r'请手动删除：',fname)
         return img
     except urllib.error.URLError as e:
         print("URL Error: ", e.reason, url)

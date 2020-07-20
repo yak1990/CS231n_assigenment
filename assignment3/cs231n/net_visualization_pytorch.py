@@ -34,7 +34,18 @@ def compute_saliency_maps(X, y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    score=model(X)
+    #loss=torch.nn.functional.cross_entropy(score,y)
+
+    score=torch.exp(score)
+    score_sum=torch.sum(score,1)
+    score=(score.T/score_sum).T
+    loss=score.gather(1,y.view(-1,1)).squeeze()-1
+
+    loss=torch.sum(loss*loss)
+    loss.backward()
+
+    saliency=torch.max(abs(X.grad),1).values
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -76,8 +87,28 @@ def make_fooling_image(X, target_y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    iter_count=0
+    while(iter_count<100):
+        score=model(X_fooling)
+        tar=torch.argmax(score,1).squeeze()
+        if(tar==target_y):
+            break
+        #score=torch.exp(score)
+        #score_sum=torch.sum(score,1)
+        #score=(score.T/score_sum).T
+        #print(score[0][tar])
+        loss=score[0][target_y]
+        #loss=loss*loss
+        loss.backward()
 
+
+        with torch.no_grad():
+            X_fooling+=learning_rate*X_fooling.grad/torch.sum(X_fooling.grad**2)
+            X_fooling.grad.zero_()
+
+
+        iter_count=iter_count+1
+    print(iter_count)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
     #                             END OF YOUR CODE                               #
@@ -94,7 +125,21 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    now_img=img
+    
+    score=model(now_img)
+    tar=torch.argmax(score,1).squeeze()
+            
+    loss=score[0][target_y]
+    loss-=l2_reg*torch.sum(now_img*now_img)
+
+    loss.backward()
+
+    with torch.no_grad():
+            now_img+=learning_rate*now_img.grad
+            now_img.grad.zero_()
+
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################
