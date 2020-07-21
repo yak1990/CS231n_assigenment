@@ -6,6 +6,8 @@ __pycache__
 coco_captioning
 squeezenet_tf2
 
+MNIST_data
+
 data_batch_1
 data_batch_2
 data_batch_3
