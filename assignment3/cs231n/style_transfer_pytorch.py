@@ -25,8 +25,13 @@ def content_loss(content_weight, content_current, content_original):
     - scalar content loss
     """
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    #return 0
+    _,C,H,W=content_current.shape
+    new_content_current=content_current.view(C,-1)
+    new_content_original=content_original.view(C,-1)
+    content_diff=new_content_current-new_content_original
+    loss=content_weight*torch.sum(content_diff**2)
+    return loss
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -46,7 +51,11 @@ def gram_matrix(features, normalize=True):
     """
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W=features.shape
+    flat_fea=features.view(N,C,-1)
+    out=torch.bmm(flat_fea,flat_fea.transpose(1,2))
+    out=out/(H*W*C)
+    return out
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -73,7 +82,14 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     # not be very much code (~5 lines). You will need to use your gram_matrix function.
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out=torch.zeros(1)
+    for idx,tar,weight in zip(style_layers,style_targets,style_weights):
+      diff=gram_matrix(feats[idx])-tar
+      out+=weight*torch.sum(diff**2)
+    
+    return out
+    
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -92,8 +108,10 @@ def tv_loss(img, tv_weight):
     # Your implementation should be vectorized and not require any loops!
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    H_diff=img[:,:,1:,:]-img[:,:,:-1,:]
+    W_diff=img[:,:,:,1:]-img[:,:,:,:-1]
+    out=tv_weight*(torch.sum(H_diff**2)+torch.sum(W_diff**2))
+    return out
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 def preprocess(img, size=512):
     """ Preprocesses a PIL JPG Image object to become a Pytorch tensor
